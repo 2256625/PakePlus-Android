@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#165DFF">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="考公计划">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2936/2936886.png">
+    <title>考公学习计划 - 公安岗</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#0FC6C2',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                        dark: '#1D2129',
+                        light: '#F2F3F5'
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .calendar-day {
+                aspect-ratio: 1;
+            }
+            .task-complete {
+                text-decoration: line-through;
+                opacity: 0.6;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- 顶部导航 -->
+    <nav class="bg-primary text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fa fa-graduation-cap text-2xl"></i>
+                    <h1 class="text-xl font-bold">考公学习计划</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm opacity-90">公安岗专属</span>
+                    <span id="currentDate" class="text-sm bg-white/20 px-3 py-1 rounded-full"></span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 进度概览 -->
+    <div class="max-w-6xl mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">总学习天数</p>
+                        <p class="text-2xl font-bold text-dark">272天</p>
+                    </div>
+                    <i class="fa fa-calendar text-3xl text-primary/30"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">已完成</p>
+                        <p id="completedDays" class="text-2xl font-bold text-success">0天</p>
+                    </div>
+                    <i class="fa fa-check-circle text-3xl text-success/30"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">剩余天数</p>
+                        <p id="remainingDays" class="text-2xl font-bold text-warning">272天</p>
+                    </div>
+                    <i class="fa fa-hourglass-half text-3xl text-warning/30"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">完成进度</p>
+                        <p id="progressPercent" class="text-2xl font-bold text-primary">0%</p>
+                    </div>
+                    <i class="fa fa-trophy text-3xl text-primary/30"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 阶段选择器 -->
+        <div class="bg-white rounded-xl shadow p-4 mb-6">
+            <h3 class="font-bold text-lg mb-3 text-dark">学习阶段</h3>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="selectPhase(1)" id="phase1" class="phase-btn px-4 py-2 rounded-lg bg-primary text-white transition-all">
+                    <i class="fa fa-book mr-2"></i>基础夯实阶段
+                </button>
+                <button onclick="selectPhase(2)" id="phase2" class="phase-btn px-4 py-2 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 transition-all">
+                    <i class="fa fa-pencil mr-2"></i>强化刷题阶段
+                </button>
+                <button onclick="selectPhase(3)" id="phase3" class="phase-btn px-4 py-2 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 transition-all">
+                    <i class="fa fa-rocket mr-2"></i>冲刺模拟阶段
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 日历视图 -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow p-4 sticky top-20">
+                    <div class="flex items-center justify-between mb-4">
+                        <button onclick="prevMonth()" class="p-2 hover:bg-gray-100 rounded-lg">
+                            <i class="fa fa-chevron-left"></i>
+                        </button>
+                        <h3 id="calendarMonth" class="font-bold text-lg"></h3>
+                        <button onclick="nextMonth()" class="p-2 hover:bg-gray-100 rounded-lg">
+                            <i class="fa fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- 星期标题 -->
+                    <div class="grid grid-cols-7 gap-1 mb-2">
+                        <div class="text-center text-sm font-medium text-gray-500 py-2">日</div>
+                        <div class="text-center text-sm font-medium text-gray-500 py-2">一</div>
+                        <div class="text-center text-sm font-medium text-gray-500 py-2">二</div>
+                        <div class="text-center text-sm font-medium text-gray-500 py-2">三</div>
+                        <div class="text-center text-sm font-medium text-gray-500 py-2">四</div>
+                        <div class="text-center text-sm font-medium text-gray-500 py-2">五</div>
+                        <div class="text-center text-sm font-medium text-gray-500 py-2">六</div>
+                    </div>
+                    
+                    <!-- 日历格子 -->
+                    <div id="calendarGrid" class="grid grid-cols-7 gap-1">
+                    </div>
+
+                    <!-- 图例 -->
+                    <div class="mt-4 pt-4 border-t">
+                        <div class="flex items-center space-x-4 text-sm">
+                            <div class="flex items-center">
+                                <span class="w-3 h-3 bg-success rounded-full mr-1"></span>
+                                <span>已完成</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="w-3 h-3 bg-primary rounded-full mr-1"></span>
+                                <span>今天</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="w-3 h-3 bg-gray-200 rounded-full mr-1"></span>
+                                <span>待学习</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 今日任务 -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow p-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-lg">
+                            <i class="fa fa-list-check text-primary mr-2"></i>
+                            <span id="taskDateTitle">今日学习任务</span>
+                        </h3>
+                        <button onclick="toggleAllTasks()" class="text-sm text-primary hover:underline">
+                            全部完成
+                        </button>
+                    </div>
+
+                    <!-- 行测任务 -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between bg-blue-50 p-3 rounded-lg mb-2">
+                            <h4 class="font-semibold text-blue-700">
+                                <i class="fa fa-calculator mr-2"></i>行测
+                            </h4>
+                            <span id="xingceProgress" class="text-sm text-blue-600">0/0</span>
+                        </div>
+                        <div id="xingceTasks" class="space-y-2 pl-2">
+                        </div>
+                    </div>
+
+                    <!-- 申论任务 -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between bg-green-50 p-3 rounded-lg mb-2">
+                            <h4 class="font-semibold text-green-700">
+                                <i class="fa fa-file-text mr-2"></i>申论
+                            </h4>
+                            <span id="shenlunProgress" class="text-sm text-green-600">0/0</span>
+                        </div>
+                        <div id="shenlunTasks" class="space-y-2 pl-2">
+                        </div>
+                    </div>
+
+                    <!-- 公安专业科目 -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between bg-orange-50 p-3 rounded-lg mb-2">
+                            <h4 class="font-semibold text-orange-700">
+                                <i class="fa fa-shield mr-2"></i>公安专业科目
+                            </h4>
+                            <span id="policeProgress" class="text-sm text-orange-600">0/0</span>
+                        </div>
+                        <div id="policeTasks" class="space-y-2 pl-2">
+                        </div>
+                    </div>
+
+                    <!-- 每日总结 -->
+                    <div class="border-t pt-4">
+                        <h4 class="font-semibold text-gray-700 mb-2">
+                            <i class="fa fa-sticky-note text-gray-500 mr-2"></i>学习笔记
+                        </h4>
+                        <textarea id="dailyNote" class="w-full p-3 border rounded-lg resize-none h-24 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="记录今天的学习心得、错题总结、待改进点..."></textarea>
+                        <button onclick="saveNote()" class="mt-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all">
+                            <i class="fa fa-save mr-2"></i>保存笔记
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 阶段说明 -->
+                <div class="bg-white rounded-xl shadow p-4 mt-6">
+                    <h3 class="font-bold text-lg mb-3">
+                        <i class="fa fa-info-circle text-primary mr-2"></i>当前阶段说明
+                    </h3>
+                    <div id="phaseDescription" class="text-gray-600 space-y-2">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部 -->
+    <footer class="bg-dark text-white py-6 mt-10">
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <p class="mb-2"><i class="fa fa-heart text-danger mr-1"></i> 加油！2027一定上岸！</p>
+            <p class="text-sm opacity-60">学习周期：2026年6月15日 - 2027年3月13日</p>
+        </div>
+    </footer>
+
+    <script>
+        // 学习计划数据
+        const studyPlan = {
+            phases: [
+                {
+                    name: "基础夯实阶段",
+                    period: "2026.6.15 - 2026.9.30",
+                    description: [
+                        "🎯 核心目标：系统学习所有知识点，建立完整知识框架",
+                        "⏰ 每日学习：6-8小时",
+                        "📚 重点：行测五大模块、申论五大题型、公安三大模块全面学习",
+                        "💡 策略：理解为主，建立思维导图，不要急于刷题"
+                    ],
+                    startDay: 0,
+                    endDay: 107
+                },
+                {
+                    name: "强化刷题阶段",
+                    period: "2026.10.1 - 2026.12.31",
+                    description: [
+                        "🎯 核心目标：专项刷题，突破重难点，提升正确率",
+                        "⏰ 每日学习：7-9小时",
+                        "📚 重点：行测提速、申论写作、公安法律条文精读",
+                        "💡 策略：错题本是提分关键，总结同类题型规律"
+                    ],
+                    startDay: 108,
+                    endDay: 199
+                },
+                {
+                    name: "冲刺模拟阶段",
+                    period: "2027.1.1 - 2027.3.13",
+                    description: [
+                        "🎯 核心目标：套题模拟，查漏补缺，适应考试节奏",
+                        "⏰ 每日学习：8-10小时",
+                        "📚 重点：历年真题套题训练，模拟真实考试环境",
+                        "💡 策略：回归基础，保持手感，调整作息心态"
+                    ],
+                    startDay: 200,
+                    endDay: 271
+                }
+            ],
+            dailyTasks: []
+        };
+
+        // 生成每日任务
+        function generateDailyTasks() {
+            const startDate = new Date(2026, 5, 15); // 2026年6月15日
+            
+            for (let day = 0; day < 272; day++) {
+                const currentDate = new Date(startDate);
+                currentDate.setDate(startDate.getDate() + day);
+                
+                let tasks = {
+                    xingce: [],
+                    shenlun: [],
+                    police: []
+                };
+
+                // 基础阶段 (0-107天，15周)
+                if (day <= 107) {
+                    const week = Math.floor(day / 7);
+                    tasks = getBasicPhaseTasks(week, day % 7);
+                }
+                // 强化阶段 (108-199天，13周)
+                else if (day <= 199) {
+                    const week = Math.floor((day - 108) / 7);
+                    tasks = getEnhancePhaseTasks(week, day % 7);
+                }
+                // 冲刺阶段 (200-271天，11周)
+                else {
+                    const week = Math.floor((day - 200) / 7);
+                    tasks = getSprintPhaseTasks(week, day % 7);
+                }
+
+                studyPlan.dailyTasks.push({
+                    date: currentDate,
+                    dayIndex: day,
+                    ...tasks
+                });
+            }
+        }
+
+        // 基础阶段任务
+        function getBasicPhaseTasks(week, dayOfWeek) {
+            const tasks = { xingce: [], shenlun: [], police: [] };
+            
+            // 周末安排模考或复习
+            if (dayOfWeek === 6) {
+                tasks.xingce.push("本周知识点回顾整理");
+                tasks.shenlun.push("本周申论素材复盘");
+                tasks.police.push("本周公安知识点思维导图");
+                return tasks;
+            }
+
+            switch(week) {
+                case 0:
+                case 1:
+                    tasks.xingce = [
+                        "言语理解-逻辑填空：实词辨析 20题",
+                        "言语理解-逻辑填空：成语积累 10个",
+                        "言语理解-片段阅读：主旨题 15题"
+                    ];
+                    tasks.police = [
+                        "职业素养-政治素质：知识点学习",
+                        "人民警察核心价值观背诵",
+                        "职业纪律：四大纪律学习"
+                    ];
+                    tasks.shenlun = ["人民日报评论精读1篇 + 素材积累"];
+                    break;
+                case 2:
+                case 3:
+                    tasks.xingce = [
+                        "判断推理-图形推理：位置/样式规律 20题",
+                        "判断推理-定义判断：单定义 15题",
+                        "判断推理-类比推理：语义/逻辑关系 15题"
+                    ];
+                    tasks.police = [
+                        "公安机关性质、职能、宗旨学习",
+                        "公安工作根本原则、根本路线背诵",
+                        "公安基本方针、基本政策理解"
+                    ];
+                    tasks.shenlun = ["申论作答原则学习 + 归纳概括题1道"];
+                    break;
+                case 4:
+                case 5:
+                    tasks.xingce = [
+                        "资料分析：统计术语记忆",
+                        "资料分析：速算技巧练习（截位直除）",
+                        "资料分析：增长率/增长量考点 15题"
+                    ];
+                    tasks.police = [
+                        "宪法基础知识学习",
+                        "民法总则重点法条学习",
+                        "刑法犯罪构成要件理解"
+                    ];
+                    tasks.shenlun = ["申论材料阅读方法训练 + 归纳概括题1道"];
+                    break;
+                case 6:
+                case 7:
+                    tasks.xingce = [
+                        "数量关系：工程/行程问题 10题",
+                        "数量关系：经济利润问题 10题",
+                        "数学运算解题方法总结"
+                    ];
+                    tasks.police = [
+                        "《人民警察法》全文精读",
+                        "《治安管理处罚法》重点法条",
+                        "公安管辖范围学习"
+                    ];
+                    tasks.shenlun = ["综合分析题：词句解释类 1道"];
+                    break;
+                case 8:
+                case 9:
+                    tasks.xingce = [
+                        "言语理解模块复习 40题",
+                        "判断推理模块复习 40题",
+                        "行测错题复盘"
+                    ];
+                    tasks.shenlun = [
+                        "归纳概括题专项 2道",
+                        "申论范文精读1篇",
+                        "大作文分论点设置练习"
+                    ];
+                    tasks.police = ["公安基础理论知识点回顾"];
+                    break;
+                case 10:
+                case 11:
+                    tasks.xingce = [
+                        "资料分析 4篇材料",
+                        "数量关系高频题型 15题",
+                        "行测速算能力训练"
+                    ];
+                    tasks.shenlun = [
+                        "提出对策题 2道",
+                        "综合分析题 1道",
+                        "申论素材背诵"
+                    ];
+                    tasks.police = ["行政法基础知识学习"];
+                    break;
+                case 12:
+                case 13:
+                    tasks.xingce = ["常识判断-法律/政治 30题", "行测各模块保持题感"];
+                    tasks.shenlun = [
+                        "应用文写作：倡议书/公开信",
+                        "应用文写作：宣传稿/讲话稿",
+                        "大作文框架练习"
+                    ];
+                    tasks.police = [
+                        "群众工作能力学习",
+                        "行政管理能力学习",
+                        "应急处理能力学习"
+                    ];
+                    break;
+                default:
+                    tasks.xingce = ["行测全套真题练习（120分钟）", "错题详细解析"];
+                    tasks.shenlun = ["申论套题练习（180分钟）", "大作文完整写作"];
+                    tasks.police = ["公安专业科目模考", "知识点查漏补缺"];
+            }
+
+            return tasks;
+        }
+
+        // 强化阶段任务
+        function getEnhancePhaseTasks(week, dayOfWeek) {
+            const tasks = { xingce: [], shenlun: [], police: [] };
+            
+            if (dayOfWeek === 6) {
+                tasks.xingce = ["行测全真模考（120分钟）", "详细解析+错题整理"];
+                tasks.shenlun = ["申论全真模考（180分钟）", "作文批改反思"];
+                tasks.police = ["公安专业科目模考", "错题知识点回顾"];
+                return tasks;
+            }
+
+            if (week < 3) {
+                tasks.xingce = [
+                    "言语理解专项刷题 40题",
+                    "判断推理专项刷题 40题",
+                    "错题分类整理"
+                ];
+                tasks.shenlun = ["归纳概括+综合分析 各1题", "答案对比优化"];
+                tasks.police = ["公安基础理论专项刷题 50题"];
+            } else if (week < 6) {
+                tasks.xingce = [
+                    "资料分析 4篇（限时25分钟）",
+                    "数量关系高频题型 15题",
+                    "资料分析速算强化"
+                ];
+                tasks.shenlun = [
+                    "提出对策+应用文 各1题",
+                    "大作文每周2篇"
+                ];
+                tasks.police = ["法律基础知识专项刷题", "重点法条背诵"];
+            } else if (week < 10) {
+                tasks.xingce = ["行测混合刷题 100题", "错题本复盘"];
+                tasks.shenlun = ["申论小题专项训练", "大作文写作1篇"];
+                tasks.police = [
+                    "基本能力模块专项刷题",
+                    "情境题专项突破 10题",
+                    "历年公安真题练习"
+                ];
+            } else {
+                tasks.xingce = ["行测套题练习", "提速训练"];
+                tasks.shenlun = ["申论套题练习", "写作优化"];
+                tasks.police = ["公安套题练习", "查漏补缺"];
+            }
+
+            return tasks;
+        }
+
+        // 冲刺阶段任务
+        function getSprintPhaseTasks(week, dayOfWeek) {
+            const tasks = { xingce: [], shenlun: [], police: [] };
+            
+            if (dayOfWeek === 6) {
+                tasks.xingce = ["历年真题全真模考（严格计时）", "详细解析"];
+                tasks.shenlun = ["历年真题全真模考", "作文精改"];
+                tasks.police = ["历年真题全真模考", "错题回顾"];
+                return tasks;
+            }
+
+            if (week < 4) {
+                tasks.xingce = ["近5年国考真题行测一套", "错题深度解析"];
+                tasks.shenlun = ["近5年国考真题申论一套", "大作文背诵范文"];
+                tasks.police = ["近5年公安真题一套", "核心法条背诵"];
+            } else if (week < 8) {
+                tasks.xingce = ["错题本全部重做一遍", "薄弱模块专项突破"];
+                tasks.shenlun = ["优秀范文背诵", "自己作文修改优化"];
+                tasks.police = ["高频考点回顾", "情境题专项训练"];
+            } else {
+                tasks.xingce = ["保持题感，每天一套模拟题", "回归基础知识点"];
+                tasks.shenlun = ["大作文模板+素材背诵", "小题答题框架回顾"];
+                tasks.police = ["核心知识点快速过一遍", "易混点辨析"];
+            }
+
+            return tasks;
+        }
+
+        // 日历相关
+        let currentMonth = new Date(2026, 5, 1); // 2026年6月
+        let selectedDate = new Date(2026, 5, 15);
+        let completedDays = JSON.parse(localStorage.getItem('completedDays') || '[]');
+        let dailyNotes = JSON.parse(localStorage.getItem('dailyNotes') || '{}');
+
+        function init() {
+            generateDailyTasks();
+            updateCurrentDate();
+            renderCalendar();
+            selectDate(new Date(2026, 5, 15));
+            updateProgress();
+        }
+
+        function updateCurrentDate() {
+            const now = new Date();
+            document.getElementById('currentDate').textContent = now.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        function renderCalendar() {
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth();
+            
+            document.getElementById('calendarMonth').textContent = 
+                `${year}年${month + 1}月`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            let html = '';
+            
+            // 空白格子
+            for (let i = 0; i < firstDay; i++) {
+                html += '<div class="calendar-day"></div>';
+            }
+
+            const planStart = new Date(2026, 5, 15);
+            const planEnd = new Date(2027, 2, 13);
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dayIndex = Math.floor((date - planStart) / (1000 * 60 * 60 * 24));
+                const isInPlan = date >= planStart && date <= planEnd;
+                const isToday = date.toDateString() === new Date().toDateString();
+                const isSelected = date.toDateString() === selectedDate.toDateString();
+                const isCompleted = completedDays.includes(dayIndex);
+
+                let classes = 'calendar-day flex items-center justify-center rounded-lg cursor-pointer text-sm transition-all ';
+                
+                if (isInPlan) {
+                    if (isCompleted) {
+                        classes += 'bg-success text-white ';
+                    } else if (isToday) {
+                        classes += 'bg-primary text-white font-bold ';
+                    } else if (isSelected) {
+                        classes += 'bg-primary/20 text-primary font-bold ';
+                    } else {
+                        classes += 'hover:bg-gray-100 ';
+                    }
+                } else {
+                    classes += 'text-gray-300 ';
+                }
+
+                html += `<div class="${classes}" onclick="selectDate(new Date(${year}, ${month}, ${day}))">${day}</div>`;
+            }
+
+            document.getElementById('calendarGrid').innerHTML = html;
+        }
+
+        function selectDate(date) {
+            selectedDate = date;
+            renderCalendar();
+            
+            const planStart = new Date(2026, 5, 15);
+            const dayIndex = Math.floor((date - planStart) / (1000 * 60 * 60 * 24));
+            
+            if (dayIndex >= 0 && dayIndex < 272) {
+                displayDayTasks(dayIndex);
+                document.getElementById('taskDateTitle').textContent = 
+                    `${date.toLocaleDateString('zh-CN')} 学习任务（第${dayIndex + 1}天）`;
+                document.getElementById('dailyNote').value = dailyNotes[dayIndex] || '';
+            }
+        }
+
+        function displayDayTasks(dayIndex) {
+            const tasks = studyPlan.dailyTasks[dayIndex];
+            
+            renderTaskList('xingceTasks', tasks.xingce, dayIndex, 'xingce');
+            renderTaskList('shenlunTasks', tasks.shenlun, dayIndex, 'shenlun');
+            renderTaskList('policeTasks', tasks.police, dayIndex, 'police');
+            
+            updateSubjectProgress(dayIndex);
+        }
+
+        function renderTaskList(containerId, tasks, dayIndex, subject) {
+            const container = document.getElementById(containerId);
+            const completedTasks = JSON.parse(localStorage.getItem(`tasks_${dayIndex}`) || '{}');
+            
+            container.innerHTML = tasks.map((task, idx) => {
+                const taskId = `${subject}_${idx}`;
+                const isCompleted = completedTasks[taskId];
+                return `
+                    <div class="flex items-center p-2 rounded hover:bg-gray-50 ${isCompleted ? 'task-complete' : ''}">
+                        <input type="checkbox" ${isCompleted ? 'checked' : ''} 
+                               onchange="toggleTask(${dayIndex}, '${taskId}')"
+                               class="w-4 h-4 mr-3 text-primary rounded focus:ring-primary">
+                        <span class="text-sm">${task}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleTask(dayIndex, taskId) {
+            const key = `tasks_${dayIndex}`;
+            const completedTasks = JSON.parse(localStorage.getItem(key) || '{}');
+            completedTasks[taskId] = !completedTasks[taskId];
+            localStorage.setItem(key, JSON.stringify(completedTasks));
+            
+            displayDayTasks(dayIndex);
+            checkDayComplete(dayIndex);
+            updateProgress();
+        }
+
+        function checkDayComplete(dayIndex) {
+            const tasks = studyPlan.dailyTasks[dayIndex];
+            const totalTasks = tasks.xingce.length + tasks.shenlun.length + tasks.police.length;
+            const completedTasks = JSON.parse(localStorage.getItem(`tasks_${dayIndex}`) || '{}');
+            const completedCount = Object.values(completedTasks).filter(v => v).length;
+            
+            if (completedCount === totalCount && totalCount > 0) {
+                if (!completedDays.includes(dayIndex)) {
+                    completedDays.push(dayIndex);
+                    localStorage.setItem('completedDays', JSON.stringify(completedDays));
+                }
+            } else {
+                completedDays = completedDays.filter(d => d !== dayIndex);
+                localStorage.setItem('completedDays', JSON.stringify(completedDays));
+            }
+            
+            renderCalendar();
+        }
+
+        function updateSubjectProgress(dayIndex) {
+            const tasks = studyPlan.dailyTasks[dayIndex];
+            const completedTasks = JSON.parse(localStorage.getItem(`tasks_${dayIndex}`) || '{}');
+            
+            const countCompleted = (prefix) => {
+                let total = 0, completed = 0;
+                Object.keys(completedTasks).forEach(key => {
+                    if (key.startsWith(prefix)) {
+                        total++;
+                        if (completedTasks[key]) completed++;
+                    }
+                });
+                return { completed, total };
+            };
+            
+            const xingce = countCompleted('xingce');
+            const shenlun = countCompleted('shenlun');
+            const police = countCompleted('police');
+            
+            document.getElementById('xingceProgress').textContent = `${xingce.completed}/${tasks.xingce.length}`;
+            document.getElementById('shenlunProgress').textContent = `${shenlun.completed}/${tasks.shenlun.length}`;
+            document.getElementById('policeProgress').textContent = `${police.completed}/${tasks.police.length}`;
+        }
+
+        function updateProgress() {
+            const completed = completedDays.length;
+            const total = 272;
+            const percent = Math.round((completed / total) * 100);
+            
+            document.getElementById('completedDays').textContent = `${completed}天`;
+            document.getElementById('remainingDays').textContent = `${total - completed}天`;
+            document.getElementById('progressPercent').textContent = `${percent}%`;
+        }
+
+        function selectPhase(phase) {
+            document.querySelectorAll('.phase-btn').forEach((btn, idx) => {
+                if (idx + 1 === phase) {
+                    btn.className = 'phase-btn px-4 py-2 rounded-lg bg-primary text-white transition-all';
+                } else {
+                    btn.className = 'phase-btn px-4 py-2 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 transition-all';
+                }
+            });
+            
+            const phaseInfo = studyPlan.phases[phase - 1];
+            document.getElementById('phaseDescription').innerHTML = 
+                `<p class="font-medium mb-2">📅 ${phaseInfo.period}</p>` +
+                phaseInfo.description.map(d => `<p>${d}</p>`).join('');
+            
+            // 跳转到该阶段的第一天
+            const startDate = new Date(2026, 5, 15);
+            startDate.setDate(startDate.getDate() + phaseInfo.startDay);
+            currentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+            selectDate(startDate);
+        }
+
+        function prevMonth() {
+            currentMonth.setMonth(currentMonth.getMonth() - 1);
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentMonth.setMonth(currentMonth.getMonth() + 1);
+            renderCalendar();
+        }
+
+        function saveNote() {
+            const planStart = new Date(2026, 5, 15);
+            const dayIndex = Math.floor((selectedDate - planStart) / (1000 * 60 * 60 * 24));
+            const note = document.getElementById('dailyNote').value;
+            dailyNotes[dayIndex] = note;
+            localStorage.setItem('dailyNotes', JSON.stringify(dailyNotes));
+            alert('笔记保存成功！');
+        }
+
+        function toggleAllTasks() {
+            const planStart = new Date(2026, 5, 15);
+            const dayIndex = Math.floor((selectedDate - planStart) / (1000 * 60 * 60 * 24));
+            const tasks = studyPlan.dailyTasks[dayIndex];
+            
+            const allTasks = {};
+            tasks.xingce.forEach((_, i) => allTasks[`xingce_${i}`] = true);
+            tasks.shenlun.forEach((_, i) => allTasks[`shenlun_${i}`] = true);
+            tasks.police.forEach((_, i) => allTasks[`police_${i}`] = true);
+            
+            localStorage.setItem(`tasks_${dayIndex}`, JSON.stringify(allTasks));
+            
+            if (!completedDays.includes(dayIndex)) {
+                completedDays.push(dayIndex);
+                localStorage.setItem('completedDays', JSON.stringify(completedDays));
+            }
+            
+            displayDayTasks(dayIndex);
+            renderCalendar();
+            updateProgress();
+        }
+
+        // 初始化
+        init();
+    </script>
+</body>
+</html>
